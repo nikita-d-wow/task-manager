@@ -2,11 +2,11 @@
   "name": "server",
   "version": "1.0.0",
   "description": "Backend for Task Manager App",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node src/server.js"
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
