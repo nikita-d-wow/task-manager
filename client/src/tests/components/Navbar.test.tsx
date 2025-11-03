@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import Navbar from "../../components/Navbar/Sidebar";
+import Navbar from "../../components/Sidebar/Sidebar";
 import { describe, it, expect } from "vitest";
 
 describe("Navbar Component", () => {
