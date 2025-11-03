@@ -1,11 +1,3 @@
-// import { Request, Response } from "express";
-
-// export const getDashboardData = async (req: Request, res: Response) => {
-//   // TODO: aggregate dashboard data from db
-//   res.json({ tasksCount: 10, completedTasks: 7 });
-// };
-
-
 import { Request, Response } from "express";
 import { Task } from "../models/task.model";
 

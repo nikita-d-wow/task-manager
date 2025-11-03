@@ -1,20 +1,26 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
 
+export interface JwtUserPayload {
+  id: string;
+  username?: string;
+}
+
 export interface AuthenticatedRequest extends Request {
-  user?: { id: string; username?: string };
+  user?: JwtUserPayload;
 }
 
 export const authenticateToken = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ message: "No token provided" });
+    res.status(401).json({ message: "No token provided" });
+    return;
   }
 
   const secret = process.env.JWT_SECRET || "secretkey";
@@ -22,17 +28,18 @@ export const authenticateToken = (
   jwt.verify(token, secret, (err: VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
     if (err) {
       console.error("JWT verification failed:", err.message);
-      return res.status(403).json({ message: "Invalid or expired token" });
+      res.status(403).json({ message: "Invalid or expired token" });
+      return;
     }
 
     if (typeof decoded === "object" && decoded !== null) {
       req.user = {
-        id: (decoded as { id: string }).id,
-        username: (decoded as { username?: string }).username,
+        id: (decoded as JwtUserPayload).id,
+        username: (decoded as JwtUserPayload).username,
       };
       next();
     } else {
-      return res.status(403).json({ message: "Invalid token payload" });
+      res.status(403).json({ message: "Invalid token payload" });
     }
   });
 };

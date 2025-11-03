@@ -1,10 +1,11 @@
-import express from "express";
+import express, { RequestHandler } from "express";
 import { getProfile, updateProfile } from "../controllers/profile.controller";
-// import { verifyToken } from "../middleware/authMiddleware";
+import { authenticateToken } from "../middleware/authMiddleware";
 
 const router = express.Router();
 
-router.get("/", getProfile);
-router.put("/", updateProfile);
+// ✅ Apply RequestHandler type casting to avoid TS overload issues
+router.get("/", authenticateToken as RequestHandler, getProfile as unknown as RequestHandler);
+router.put("/", authenticateToken as RequestHandler, updateProfile as unknown as RequestHandler);
 
 export default router;

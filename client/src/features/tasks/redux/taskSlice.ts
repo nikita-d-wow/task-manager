@@ -29,7 +29,7 @@ const initialState: TasksState = {
 };
 
 // ✅ Base URL (adjust to your backend)
-const API_URL = "http://localhost:5000/api/tasks";
+const API_URL = "http://localhost:5000/tasks";
 
 // Utility type for clean error extraction
 const getErrorMessage = (error: unknown): string => {

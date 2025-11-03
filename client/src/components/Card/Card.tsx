@@ -1,19 +1,11 @@
 import React from "react";
+import { cardShadow } from "../../constants/ui";
 
 const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
-  className,
+  className = "",
 }) => (
-  <div
-    className={`
-      bg-white rounded shadow p-4 
-      w-full 
-      h-320px 
-      sm:h-[360px] 
-      md:h-[330px] 
-      ${className || ""}
-    `}
-  >
+  <div className={`bg-white dark:bg-gray-900 rounded-xl ${cardShadow} w-full ${className}`}>
     {children}
   </div>
 );

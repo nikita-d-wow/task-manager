@@ -34,6 +34,7 @@ export const addTask = async (req: Request, res: Response) => {
 
     const newTask = new Task({
       ...req.body,
+      category: req.body.category || "General", 
       createdBy: userId,
     });
 

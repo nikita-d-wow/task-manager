@@ -29,7 +29,7 @@ const axiosInstance: AxiosInstance = axios.create({
 // ✅ Attach token before request
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("auth_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -87,7 +87,7 @@ axiosInstance.interceptors.response.use(
         };
 
 
-        localStorage.setItem("token", token);
+        localStorage.setItem("auth_token", token);
         localStorage.setItem("refreshToken", newRefreshToken);
 
 

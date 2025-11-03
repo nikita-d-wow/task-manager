@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface ITask extends Document {
   title: string;
   description?: string;
+  category?: string;
   project?: string;
   date: string;
   time: string;
@@ -18,6 +19,7 @@ const taskSchema = new Schema<ITask>(
   {
     title: { type: String, required: true },
     description: { type: String },
+    category: {type: String, default: "General" },
     project: { type: String },
     date: { type: String, required: true },
     time: { type: String, required: true },

@@ -8,13 +8,20 @@ const api = axios.create({
 //console.log("API Base URL:", api.defaults.baseURL);
 
 export const loginApi = (data: Credentials) =>
-  api.post<AuthResponse>("/auth/login", data);
+  api.post<AuthResponse>("/login", data);
 
 export const signupApi = (data: User & { password: string }) =>
-  api.post<AuthResponse>("/auth/signup", data);
+  api.post<AuthResponse>("/signup", data);
 
 export const fetchProfileApi = (token: string) =>
   api.get<User>("/profile", {
     headers: { Authorization: `Bearer ${token}` },
   });
 
+  export const updateProfileApi = (
+  token: string,
+  data: { username?: string; email?: string; avatar?: string; role?: string }
+) =>
+  api.put<{ message: string; user: User }>("/profile", data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });

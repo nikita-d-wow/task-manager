@@ -6,13 +6,15 @@ export type User = {
 };
 
 export interface Task {
-  _id?: string;
+  _id: string;
   title: string;
   description?: string;
+  category?: string;
   project?: string;
-  assignedTo: string | null;
+  assignedTo: User | null;
   progress: number;
   completed: boolean;
+  deleted?: boolean;
   avatar: string[];
   date: string;
   time: string;

@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Same pastels as BarChart for color consistency
 const pastelColors = ["#a5b4fc", "#fde68a", "#bbf7d0", "#fbcfe8"];
 
 type LineChartProps = {

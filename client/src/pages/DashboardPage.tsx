@@ -1,183 +1,31 @@
-// import React, { useEffect, useState } from "react";
-// import { useSelector } from "react-redux";
-// import axiosInstance from "../lib/axiosInstance";
-// import type { RootState } from "../app/store";
-// import type { Task } from "../features/tasks/types/task.types";
-
-// const DashboardPage: React.FC = () => {
-//   const [tasks, setTasks] = useState<Task[]>([]);
-//   const [loading, setLoading] = useState(true);
-
-//   const user = useSelector((state: RootState) => state.auth.user);
-
-//   useEffect(() => {
-//     const fetchDashboardData = async () => {
-//       try {
-//         setLoading(true);
-//         // Fetch dashboard summary data
-//         const res = await axiosInstance.get<{ tasks: Task[]; tasksCount?: number; completedTasks?: number }>("/dashboard");
-
-//         // Prioritize tasks array from dashboard response
-//         if (res.data && Array.isArray(res.data.tasks)) {
-//           setTasks(res.data.tasks);
-//         } else {
-//           // Fallback: fetch all tasks
-//           const taskRes = await axiosInstance.get<Task[]>("/tasks");
-//           if (Array.isArray(taskRes.data)) {
-//             setTasks(taskRes.data);
-//           } else {
-//             setTasks([]);
-//             console.warn("Expected tasks array but received:", taskRes.data);
-//           }
-//         }
-//       } catch (err) {
-//         console.error("Error fetching dashboard data:", err);
-//         setTasks([]);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     fetchDashboardData();
-//   }, []);
-
-//   if (loading) return <p className="text-gray-500 p-6">Loading dashboard...</p>;
-
-//   const totalTasks = tasks.length;
-//   const completedTasks = tasks.filter((t) => t.completed).length;
-//   const inProgressTasks = totalTasks - completedTasks;
-
-//   // Sort by createdAt descending and pick 4 recent
-//   const recentTasks = [...tasks]
-//     .sort((a, b) => new Date(b.createdAt ?? "").getTime() - new Date(a.createdAt ?? "").getTime())
-//     .slice(0, 4);
-
-//   const StatCard = ({
-//     title,
-//     count,
-//     color,
-//     bgColor,
-//   }: {
-//     title: string;
-//     count: number;
-//     color: string;
-//     bgColor: string;
-//   }) => (
-//     <div className={`${bgColor} rounded-xl px-4 py-6 shadow-sm`}>
-//       <div className="flex items-center justify-between">
-//         <div>
-//           <h3 className={`text-sm font-medium ${color}`}>{title}</h3>
-//           <p className="text-2xl font-bold text-gray-800 mt-1">{count}</p>
-//           <p className="text-xs text-gray-500 mt-1">{count} Tasks</p>
-//         </div>
-//         <div
-//           className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-black text-sm font-bold`}
-//         >
-//           {count}
-//         </div>
-//       </div>
-//     </div>
-//   );
-
-//   return (
-//     <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-6">
-//       <div className="mb-8">
-//         <h1 className="text-xl sm:text-2xl font-bold mb-2">
-//           Hi, {user?.username || "Adventurer"}
-//         </h1>
-//         <p className="text-gray-500">Your daily adventure starts now</p>
-//       </div>
-
-//       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-//         <StatCard
-//           title="On going"
-//           count={inProgressTasks}
-//           color="text-blue-600"
-//           bgColor="bg-blue-50"
-//         />
-//         <StatCard
-//           title="Completed"
-//           count={completedTasks}
-//           color="text-green-600"
-//           bgColor="bg-green-50"
-//         />
-//         <StatCard
-//           title="Canceled"
-//           count={0}
-//           color="text-red-600"
-//           bgColor="bg-red-50"
-//         />
-//       </div>
-
-//       <div className="bg-white rounded-xl shadow-sm px-4 py-6">
-//         <h2 className="text-base sm:text-lg font-bold mb-4 sm:mb-6">Recent Tasks</h2>
-//         <div className="space-y-4">
-//           {recentTasks.length > 0 ? (
-//             recentTasks.map((task) => (
-//               <div
-//                 key={task._id}
-//                 className="bg-gray-50 rounded-lg border p-3 sm:p-4 hover:shadow-md transition-shadow"
-//               >
-//                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2 sm:gap-0">
-//                   <div>
-//                     <h4 className="font-medium text-gray-800">{task.title}</h4>
-//                     <p className="text-sm text-gray-500">{task.project || "General"}</p>
-//                   </div>
-//                   <span
-//                     className={`text-sm font-semibold ${
-//                       task.completed ? "text-green-600" : "text-yellow-600"
-//                     }`}
-//                   >
-//                     {task.completed ? "Completed" : "Pending"}
-//                   </span>
-//                 </div>
-//               </div>
-//             ))
-//           ) : (
-//             <p className="text-gray-500">No recent tasks found.</p>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default DashboardPage;
-
-
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import { motion } from "framer-motion";
 import axiosInstance from "../lib/axiosInstance";
 import type { RootState } from "../app/store";
 import type { Task } from "../features/tasks/types/task.types";
 
-const DashboardPage: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+interface ExtendedTask extends Task {
+  deleted?: boolean;
+  isDeleted?: boolean;
+}
 
+const DashboardPage: React.FC = () => {
+  const [tasks, setTasks] = useState<ExtendedTask[]>([]);
+  const [loading, setLoading] = useState(true);
   const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        // Fetch dashboard data including tasks array
-        const res = await axiosInstance.get<{
-          tasks?: Task[];
-          tasksCount?: number;
-          completedTasks?: number;
-        }>("/dashboard");
+        const res = await axiosInstance.get<{ tasks?: ExtendedTask[] }>("/dashboard");
 
         if (res.data?.tasks && Array.isArray(res.data.tasks)) {
           setTasks(res.data.tasks);
         } else {
-          // fallback: fetch all tasks
-          const taskRes = await axiosInstance.get<Task[]>("/tasks");
-          if (Array.isArray(taskRes.data)) {
-            setTasks(taskRes.data);
-          } else {
-            setTasks([]);
-            console.warn("Expected tasks array but got:", taskRes.data);
-          }
+          const taskRes = await axiosInstance.get<ExtendedTask[]>("/tasks");
+          setTasks(Array.isArray(taskRes.data) ? taskRes.data : []);
         }
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
@@ -190,15 +38,30 @@ const DashboardPage: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <p className="text-gray-500 p-6">Loading dashboard...</p>;
+    return (
+      <div className="flex items-center justify-center h-[60vh] bg-texture bg-cover bg-fixed bg-center">
+        <motion.p
+          className="text-gray-500 text-lg"
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ repeat: Infinity, duration: 1.5 }}
+        >
+          Loading your dashboard...
+        </motion.p>
+      </div>
+    );
   }
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
-  const inProgressTasks = totalTasks - completedTasks;
+  const deletedTasks = tasks.filter((t) => t.deleted || t.isDeleted).length;
+  const inProgressTasks = totalTasks - completedTasks - deletedTasks;
 
   const recentTasks = [...tasks]
-    .sort((a, b) => new Date(b.createdAt ?? "").getTime() - new Date(a.createdAt ?? "").getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt ?? "").getTime() -
+        new Date(a.createdAt ?? "").getTime()
+    )
     .slice(0, 4);
 
   const StatCard = ({
@@ -206,86 +69,146 @@ const DashboardPage: React.FC = () => {
     count,
     color,
     bgColor,
+    delay,
   }: {
     title: string;
     count: number;
     color: string;
     bgColor: string;
+    delay: number;
   }) => (
-    <div className={`${bgColor} rounded-xl px-4 py-6 shadow-sm`}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay }}
+      className={`${bgColor} rounded-xl px-5 py-6 shadow-sm hover:shadow-md transition-all cursor-pointer backdrop-blur-sm bg-opacity-80`}
+    >
       <div className="flex items-center justify-between">
         <div>
           <h3 className={`text-sm font-medium ${color}`}>{title}</h3>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{count}</p>
+          <p className="text-3xl font-bold text-gray-800 mt-1">{count}</p>
           <p className="text-xs text-gray-500 mt-1">{count} Tasks</p>
         </div>
-        <div
-          className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-black text-sm font-bold`}
+        <motion.div
+          className={`w-10 h-10 ${color} bg-opacity-10 rounded-full flex items-center justify-center text-black text-sm font-bold`}
+          whileHover={{ scale: 1.1 }}
         >
           {count}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-6">
-      <div className="mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold mb-2">
-          Hi, {user?.username || "Adventurer"}
-        </h1>
-        <p className="text-gray-500">Your daily adventure starts now</p>
-      </div>
+    <div className="min-h-screen bg-texture bg-cover bg-fixed bg-center text-gray-800 transition-all duration-500">
+      {/* Main Content */}
+      <div className="relative max-w-6xl mx-auto px-4 md:px-6 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-10"
+        >
+          <h1 className="text-3xl font-bold mb-2 text-gray-800">
+            Welcome back,{" "}
+            <span className="text-cyan-600">
+              {user?.username || "Explorer"} 👋
+            </span>
+          </h1>
+          <p className="text-gray-500 text-sm sm:text-base">
+            Here’s a snapshot of your progress today
+          </p>
+        </motion.div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-        <StatCard
-          title="On going"
-          count={inProgressTasks}
-          color="text-blue-600"
-          bgColor="bg-blue-50"
-        />
-        <StatCard
-          title="Completed"
-          count={completedTasks}
-          color="text-green-600"
-          bgColor="bg-green-50"
-        />
-        <StatCard
-          title="Canceled"
-          count={0}
-          color="text-red-600"
-          bgColor="bg-red-50"
-        />
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm px-4 py-6">
-        <h2 className="text-base sm:text-lg font-bold mb-4 sm:mb-6">Recent Tasks</h2>
-        <div className="space-y-4">
-          {recentTasks.length > 0 ? (
-            recentTasks.map((task) => (
-              <div
-                key={task._id}
-                className="bg-gray-50 rounded-lg border p-3 sm:p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2 sm:gap-0">
-                  <div>
-                    <h4 className="font-medium text-gray-800">{task.title}</h4>
-                    <p className="text-sm text-gray-500">{task.project || "General"}</p>
-                  </div>
-                  <span
-                    className={`text-sm font-semibold ${
-                      task.completed ? "text-green-600" : "text-yellow-600"
-                    }`}
-                  >
-                    {task.completed ? "Completed" : "Pending"}
-                  </span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-500">No recent tasks found.</p>
-          )}
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+          <StatCard
+            title="On going"
+            count={inProgressTasks}
+            color="text-blue-600"
+            bgColor="bg-blue-50"
+            delay={0.1}
+          />
+          <StatCard
+            title="Completed"
+            count={completedTasks}
+            color="text-green-600"
+            bgColor="bg-green-50"
+            delay={0.2}
+          />
+          <StatCard
+            title="Deleted"
+            count={deletedTasks}
+            color="text-red-600"
+            bgColor="bg-red-50"
+            delay={0.3}
+          />
+          <StatCard
+            title="Total"
+            count={totalTasks}
+            color="text-purple-600"
+            bgColor="bg-purple-50"
+            delay={0.4}
+          />
         </div>
+
+        {/* Recent Tasks */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md px-5 py-6 border border-gray-100"
+        >
+          <h2 className="text-lg font-bold mb-6 text-gray-800">
+            Recent Activity
+          </h2>
+          <div className="space-y-4">
+            {recentTasks.length > 0 ? (
+              recentTasks.map((task, i) => {
+                const isDeleted = task.deleted || task.isDeleted;
+                const statusColor = task.completed
+                  ? "text-green-600"
+                  : isDeleted
+                  ? "text-red-600"
+                  : "text-yellow-600";
+                const statusText = task.completed
+                  ? "Completed"
+                  : isDeleted
+                  ? "Deleted"
+                  : "Pending";
+
+                return (
+                  <motion.div
+                    key={task._id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.1 }}
+                    className={`${
+                      isDeleted ? "opacity-60 line-through" : ""
+                    } bg-gray-50/80 backdrop-blur-sm rounded-lg border p-4 hover:shadow-md transition-shadow`}
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div>
+                        <h4 className="font-semibold text-gray-800">
+                          {task.title}
+                        </h4>
+                        <p className="text-sm text-gray-500">
+                          {task.project || "General Project"}
+                        </p>
+                      </div>
+                      <span className={`text-sm font-semibold ${statusColor}`}>
+                        {statusText}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })
+            ) : (
+              <p className="text-gray-500 text-sm">No recent tasks found.</p>
+            )}
+          </div>
+        </motion.div>
       </div>
     </div>
   );

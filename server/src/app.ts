@@ -11,21 +11,26 @@ import profileRoutes from "./routes/profile.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import calendarRoutes from "./routes/calendar.routes";
 import progressRoutes from "./routes/progress.routes";
-import userRoutes from "./routes/user.routes"
+import userRoutes from "./routes/user.routes";
+import googleRoutes from "./routes/google.routes";
+import passport from "./config/passport";
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(passport.initialize());
 
 connectDB(); // connect after env is loaded
 
-app.use("/auth", authRoutes);
+app.use(authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/tasks", taskRoutes);
-app.use("/dashboard",dashboardRoutes);
+app.use("/dashboard", dashboardRoutes);
 app.use("/calendar", calendarRoutes);
-app.use( progressRoutes);
+app.use(progressRoutes);
 app.use("/users", userRoutes);
+app.use(googleRoutes);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 
