@@ -5,11 +5,11 @@ import jwt from "jsonwebtoken";
 const router = express.Router();
 
 // ✅ Redirect user to Google login
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 // ✅ Google OAuth callback
 router.get(
-  "/google/callback",
+  "/callback",
   passport.authenticate("google", { session: false, failureRedirect: "/login-failed" }),
   async (req, res) => {
     try {

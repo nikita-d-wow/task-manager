@@ -30,7 +30,7 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/calendar", calendarRoutes);
 app.use(progressRoutes);
 app.use("/users", userRoutes);
-app.use(googleRoutes);
+app.use("/google", googleRoutes);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 
