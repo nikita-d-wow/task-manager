@@ -4,8 +4,11 @@ import axiosInstance from "../../../lib/axiosInstance";
 import type { User } from "../../../features/tasks/types/task.types";
 import { motion } from "framer-motion";
 
-const pastelButton = "bg-pink-200 border-pink-300 text-pink-900 hover:bg-pink-300 transition-colors";
-const pastelInputBorder = "border-blue-200 focus:border-blue-400 focus:ring focus:ring-blue-200";
+const pastelButton =
+  "bg-pink-200 border-pink-300 text-pink-900 hover:bg-pink-300 transition-colors";
+
+const pastelInputBorder =
+  "border-blue-200 focus:border-blue-400 focus:ring focus:ring-blue-200";
 
 const TasksPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -16,13 +19,20 @@ const TasksPage: React.FC = () => {
     assignedTo: "",
   });
 
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+
   const fetchUsers = async (): Promise<void> => {
+    setFetchError(null);
     try {
       const res = await axiosInstance.get("/users");
       const data = Array.isArray(res.data) ? res.data : res.data.users;
       setUsers(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
+      setFetchError("Failed to load users. Please try again later.");
     }
   };
 
@@ -31,10 +41,15 @@ const TasksPage: React.FC = () => {
   }, []);
 
   const handleAddTask = async (): Promise<void> => {
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
     if (!newTask.title.trim()) {
-      alert("Please enter a task title");
+      setSubmitError("Please enter a task title");
       return;
     }
+
+    setLoading(true);
 
     try {
       const now = new Date();
@@ -51,13 +66,15 @@ const TasksPage: React.FC = () => {
       });
 
       if (res.status === 201) {
-        alert("✅ Task added successfully!");
+        setSubmitSuccess("✅ Task added successfully!");
         setNewTask({ title: "", description: "", category: "", assignedTo: "" });
         window.dispatchEvent(new CustomEvent("tasksUpdated"));
       }
     } catch (error) {
       console.error("Error adding task:", error);
-      alert("Failed to add task.");
+      setSubmitError("Failed to add task. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,39 +82,62 @@ const TasksPage: React.FC = () => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-md mx-auto py-10 px-4 sm:px-6 md:px-8 lg:px-10 bg-white min-h-screen rounded-lg shadow-md"
+      className="max-w-md mx-auto py-10 px-6 sm:px-8 md:px-10 bg-white min-h-screen rounded-lg shadow-md"
     >
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800 text-center">Add New Task</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800 text-center">
+        Add New Task
+      </h2>
+
+      {fetchError && (
+        <p className="text-red-600 text-center mb-4" role="alert">
+          {fetchError}
+        </p>
+      )}
+
+      {submitError && (
+        <p className="text-red-600 text-center mb-4" role="alert">
+          {submitError}
+        </p>
+      )}
+
+      {submitSuccess && (
+        <p className="text-green-600 text-center mb-4" role="status">
+          {submitSuccess}
+        </p>
+      )}
 
       <div className="flex flex-col gap-4">
         <input
           type="text"
           value={newTask.title}
           onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-          className={`p-2 rounded-lg border ${pastelInputBorder} text-gray-800`}
+          className={`p-3 rounded-lg border ${pastelInputBorder} text-gray-800`}
           placeholder="Task title"
+          aria-label="Task title"
         />
 
         <textarea
           value={newTask.description}
           onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-          className={`p-2 rounded-lg border ${pastelInputBorder} text-gray-800`}
+          className={`p-3 rounded-lg border ${pastelInputBorder} text-gray-800`}
           placeholder="Description (optional)"
-          rows={2}
+          rows={3}
+          aria-label="Task description"
         />
 
         <input
           type="text"
           value={newTask.category}
           onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
-          className={`p-2 rounded-lg border ${pastelInputBorder} text-gray-800`}
+          className={`p-3 rounded-lg border ${pastelInputBorder} text-gray-800`}
           placeholder="Category (e.g., Design, Backend, Docs)"
+          aria-label="Task category"
         />
 
         <select
           value={newTask.assignedTo}
           onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-          className={`p-2 rounded-lg border ${pastelInputBorder} text-gray-700`}
+          className={`p-3 rounded-lg border ${pastelInputBorder} text-gray-700`}
           aria-label="Assign task to user"
         >
           <option value="">Assign to...</option>
@@ -112,10 +152,40 @@ const TasksPage: React.FC = () => {
           onClick={handleAddTask}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className={`py-2 rounded-lg border ${pastelButton} font-semibold shadow-md`}
+          className={`py-3 rounded-lg border ${pastelButton} font-semibold shadow-md flex justify-center items-center gap-2`}
           type="button"
+          disabled={loading}
+          aria-busy={loading}
         >
-          Add Task
+          {loading ? (
+            <>
+              <svg
+                className="animate-spin h-5 w-5 text-pink-900"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                role="img"
+                aria-label="Loading spinner"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+              Adding Task...
+            </>
+          ) : (
+            "Add Task"
+          )}
         </motion.button>
       </div>
     </motion.div>

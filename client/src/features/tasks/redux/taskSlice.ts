@@ -28,7 +28,7 @@ const initialState: TasksState = {
   error: null,
 };
 
-// ✅ Base URL (adjust to your backend)
+// ✅ Base URL 
 const API_URL = "http://localhost:5000/tasks";
 
 // Utility type for clean error extraction

@@ -4,6 +4,7 @@ import axiosInstance from "../lib/axiosInstance";
 import type { Task, User } from "../features/tasks/types/task.types";
 import { Loader2, ClipboardList } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { io, Socket } from "socket.io-client";
 
 const pastelColors = [
   "border-blue-200 bg-blue-50",
@@ -19,15 +20,23 @@ const buttonClass = {
   delete: "bg-pink-200 text-pink-900 hover:bg-pink-300 transition-colors",
 };
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const socket: Socket = io(API_URL, { autoConnect: false });
+
+
 const HomePage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [newTaskNotification, setNewTaskNotification] = useState<boolean>(false);
 
   const fetchTasks = async (): Promise<void> => {
+    setLoading(true);
     try {
       const res: AxiosResponse<Task[]> = await axiosInstance.get("/tasks");
-      setTasks(Array.isArray(res.data) ? res.data : []);
+      const fetchedTasks = Array.isArray(res.data) ? res.data : [];
+      setTasks(fetchedTasks);
+      console.log("Fetched tasks:", fetchedTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       setTasks([]);
@@ -38,6 +47,23 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     fetchTasks();
+
+    socket.on("connect", () => console.log("Socket connected"));
+    socket.on("disconnect", (reason) => console.log("Socket disconnected:", reason));
+    socket.on("connect_error", (err) => console.error("Socket connection error:", err));
+
+    socket.on("newTaskAssigned", (data) => {
+      console.log("Socket event newTaskAssigned received:", data);
+      fetchTasks();
+      setNewTaskNotification(true);
+    });
+
+    return () => {
+      socket.off("newTaskAssigned");
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+    };
   }, []);
 
   const toggleTaskCompletion = async (id: string, completed: boolean): Promise<void> => {
@@ -71,17 +97,21 @@ const HomePage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-gray-500">
-        <Loader2 className="animate-spin mr-2" />
-        Loading your tasks...
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-white py-8 px-4 sm:px-6 md:px-8 lg:px-12">
+    <div className="min-h-screen bg-white py-8 px-4 sm:px-6 md:px-8 lg:px-12 relative">
+      {newTaskNotification && (
+        <div
+          className="fixed top-4 right-4 bg-red-600 text-white p-2 rounded-lg shadow-lg z-50"
+          role="alert"
+          aria-live="polite"
+        >
+          New Task Assigned!
+          <button className="ml-4 underline" onClick={() => setNewTaskNotification(false)}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto">
         <motion.h1
           className="text-3xl font-bold text-gray-800 mb-8 flex items-center gap-2"
@@ -92,7 +122,12 @@ const HomePage: React.FC = () => {
           Your Tasks
         </motion.h1>
 
-        {tasks.length === 0 ? (
+        {loading ? (
+          <div className="min-h-screen flex items-center justify-center bg-white text-gray-500">
+            <Loader2 className="animate-spin mr-2" aria-hidden="true" />
+            Loading your tasks...
+          </div>
+        ) : tasks.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -141,7 +176,6 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex justify-end gap-2 mt-4">
                     <button
                       onClick={() => toggleTaskCompletion(task._id!, task.completed || false)}
@@ -169,7 +203,6 @@ const HomePage: React.FC = () => {
         )}
       </div>
 
-      {/* Edit Modal */}
       <AnimatePresence>
         {editingTask && (
           <motion.div

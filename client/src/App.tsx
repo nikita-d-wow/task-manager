@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
-import Navbar from "./components/Sidebar/Sidebar";
+import Sidebar from "./components/Sidebar/Sidebar";
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -11,7 +11,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!shouldHideNavbar && <Navbar />}  
+      {!shouldHideNavbar && <Sidebar />}  
       <main className="p-4">
         <AppRoutes />
       </main>

@@ -3,18 +3,30 @@ import { Task } from "../models/task.model";
 
 export const getDashboardData = async (req: Request, res: Response) => {
   try {
-    // Fetch all tasks, you can modify to filter by user if needed
+    // Fetch latest 20 tasks, sorted by creation date descending
     const tasks = await Task.find()
       .sort({ createdAt: -1 })
-      .limit(20); // limit for performance and UI
+      .limit(20)
+      .populate([
+        { path: "createdBy", select: "username avatar" },
+        { path: "assignedTo", select: "username avatar" },
+      ]);
 
-    const completedTasks = tasks.filter((task) => task.completed).length;
+    // Calculate completed tasks count
+    const completedTasks = tasks.reduce(
+      (count, task) => (task.completed && !task.deleted ? count + 1 : count),
+      0
+    );
 
-    // Send tasks array along with counts for frontend
+    // Calculate deleted tasks count
+    const deletedTasksCount = tasks.filter((task) => task.deleted).length;
+
+    // Return tasks and summary counts
     res.json({
-      tasks,
+      tasks, // Tasks will contain the `deleted` flag
       tasksCount: tasks.length,
       completedTasks,
+      deletedTasksCount,
     });
   } catch (error) {
     console.error("Error fetching dashboard data:", error);

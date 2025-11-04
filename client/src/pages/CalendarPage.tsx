@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import type { AxiosResponse } from "axios";
 import axiosInstance from "../lib/axiosInstance";
 import type { Task } from "../features/tasks/types/task.types";
+import { useSelector } from "react-redux";
+import type { RootState } from "../app/store";
+import { io, Socket } from "socket.io-client";
 
 const pastelColors = [
   "border-pink-200 bg-pink-50",
@@ -10,17 +13,24 @@ const pastelColors = [
   "border-yellow-200 bg-yellow-50",
 ];
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const socket: Socket = io(API_URL, { autoConnect: false });
+
 const CalendarPage: React.FC = () => {
   const today = new Date();
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [selected, setSelected] = useState<number>(today.getDate());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const user = useSelector((state: RootState) => state.auth.user);
 
   const weekDays = useMemo(() => {
     const current = new Date(today);
     const day = current.getDay();
-    const diff = current.getDate() - day + 1 + weekOffset * 7;
+    const diff = current.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
     const startOfWeek = new Date(current.setDate(diff));
     return Array.from({ length: 7 }).map((_, i) => {
       const d = new Date(startOfWeek);
@@ -31,7 +41,7 @@ const CalendarPage: React.FC = () => {
         full: d.toISOString().split("T")[0],
       };
     });
-  }, [weekOffset]);
+  }, [weekOffset, today]);
 
   const selectedDateObj = weekDays.find((d) => d.date === selected);
   const selectedDate = selectedDateObj
@@ -41,12 +51,21 @@ const CalendarPage: React.FC = () => {
   const fetchTasks = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const res: AxiosResponse<{ tasks: Task[] }> = await axiosInstance.get("/calendar", {
-        params: { date: selectedDate },
-      });
-      setTasks(res.data.tasks || []);
-    } catch (error) {
-      console.error("Error fetching calendar tasks:", error);
+      setError(null);
+      // Backend handles role filtering per user/admin in /calendar
+      const res: AxiosResponse<{ tasks: Task[] }> = await axiosInstance.get(
+        "/calendar",
+        {
+          params: { date: selectedDate },
+        }
+      );
+      setTasks(res.data.tasks ?? []);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError("Error fetching calendar tasks: " + e.message);
+      } else {
+        setError("Error fetching calendar tasks: Unknown error");
+      }
       setTasks([]);
     } finally {
       setIsLoading(false);
@@ -55,63 +74,93 @@ const CalendarPage: React.FC = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, [selectedDate]);
+  }, [selectedDate, user?.role]);
 
+  // Socket setup for task updates
   useEffect(() => {
-    const handleTaskUpdate = () => fetchTasks();
-    window.addEventListener("tasksUpdated", handleTaskUpdate);
-    return () => window.removeEventListener("tasksUpdated", handleTaskUpdate);
-  }, []);
+    if (!socket.connected) {
+      socket.io.opts.extraHeaders = { Authorization: `Bearer ${localStorage.getItem("auth_token")}` };
+      socket.connect();
+    }
 
-  const handleAddTask = async (title: string): Promise<void> => {
+    socket.emit("registerUser", user?.id);
+
+    socket.on("newTaskAssigned", () => {
+      fetchTasks();
+    });
+
+    return () => {
+      socket.off("newTaskAssigned");
+      socket.disconnect();
+    };
+  }, [user?.id, selectedDate]);
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim()) return;
     try {
+      setIsLoading(true);
+      setError(null);
       const now = new Date();
       const currentTime = now.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       });
       await axiosInstance.post("/tasks", {
-        title,
+        title: newTaskTitle.trim(),
         date: selectedDate,
         time: currentTime,
         description: "",
         avatar: [],
       });
+      setNewTaskTitle("");
       await fetchTasks();
       window.dispatchEvent(new CustomEvent("tasksUpdated"));
-    } catch (error) {
-      console.error("Error adding task:", error);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError("Error adding task: " + e.message);
+      } else {
+        setError("Error adding task: Unknown error");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-texture bg-cover bg-fixed bg-center text-gray-800 px-4 py-4 sm:px-6 md:px-8 transition-all duration-500">
-      {/* Navigation Bar */}
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-texture bg-cover bg-fixed bg-center text-gray-800 px-4 py-4 sm:px-6 md:px-8 max-w-screen-md mx-auto transition-all duration-500">
+      <div>
         <div className="flex items-center justify-between py-3 animate-fadeIn">
           <button
             onClick={() => setWeekOffset((prev) => prev - 1)}
             className="text-lg rounded-full hover:bg-gray-100 px-2 transition-transform hover:scale-110"
+            aria-label="Previous week"
           >
             ◀
           </button>
-          <h2 className="font-semibold text-lg transition-all duration-500 text-gray-700">
-            {new Date(selectedDate).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </h2>
+          <div className="flex flex-col items-center">
+            <h2 className="font-semibold text-lg text-gray-700">
+              {new Date(selectedDate).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </h2>
+            <p className="text-xs text-gray-500">
+              Role:{" "}
+              <span className="font-semibold text-pink-600">
+                {user?.role?.toUpperCase() ?? "USER"}
+              </span>
+            </p>
+          </div>
           <button
             onClick={() => setWeekOffset((prev) => prev + 1)}
             className="text-lg rounded-full hover:bg-gray-100 px-2 transition-transform hover:scale-110"
+            aria-label="Next week"
           >
             ▶
           </button>
         </div>
-
-        {/* Week View */}
-        <div className="flex justify-between mb-4 gap-1 animate-slideIn">
+        <div className="flex justify-between mb-4 gap-1 animate-slideIn overflow-x-auto">
           {weekDays.map((day) => (
             <button
               key={day.full}
@@ -121,6 +170,7 @@ const CalendarPage: React.FC = () => {
                   : "bg-white/70 backdrop-blur-sm text-gray-700"
               }`}
               onClick={() => setSelected(day.date)}
+              aria-label={`Select day ${day.name}, date ${day.date}`}
             >
               <span className="text-xs">{day.name}</span>
               <span className="font-bold text-base">{day.date}</span>
@@ -128,7 +178,12 @@ const CalendarPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Task List */}
+        {error && (
+          <div className="text-red-600 bg-red-100 p-2 rounded my-4 text-center">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-4">
           {isLoading ? (
             <p className="text-gray-400 text-center py-8 animate-pulse">
@@ -139,27 +194,18 @@ const CalendarPage: React.FC = () => {
               const cardColor = pastelColors[idx % pastelColors.length];
               return (
                 <div
-                  key={task._id || `${task.title}-${task.date}`}
-                  className={`flex flex-col ${cardColor} border-l-8 rounded-xl px-4 py-4 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02]`}
+                  key={task._id ?? `${task.title}-${task.date}`}
+                  className={`flex flex-col ${cardColor} border-l-8 rounded-xl px-4 py-4 shadow-sm hover:shadow-lg transition-all duration-300`}
                 >
                   <p className="font-medium text-gray-800">{task.title}</p>
                   <p className="text-xs mt-2 mb-1 text-gray-500">{task.time}</p>
-                  {task.description && (
-                    <div className="mb-2 bg-gray-100 rounded p-1 text-xs text-gray-600">
-                      {task.description}
-                    </div>
-                  )}
-                  {task.avatar && (
-                    <div className="flex -space-x-2 mt-2">
-                      {task.avatar.map((img, ai) => (
-                        <img
-                          key={`${task._id || task.title}-avatar-${ai}`}
-                          src={img}
-                          alt=""
-                          className="w-7 h-7 rounded-full border-2 border-white shadow"
-                        />
-                      ))}
-                    </div>
+                  {user?.role === "admin" && task.assignedTo && (
+                    <p className="text-xs text-gray-600">
+                      Assigned to:{" "}
+                      <span className="font-medium text-pink-600">
+                        {task.assignedTo.username || "Unknown"}
+                      </span>
+                    </p>
                   )}
                 </div>
               );
@@ -170,28 +216,23 @@ const CalendarPage: React.FC = () => {
             </p>
           )}
         </div>
-
-        {/* Add New Task */}
         <div className="mt-6 flex items-center bg-white/80 backdrop-blur-sm border rounded-lg p-2 shadow-sm hover:shadow-md transition-all animate-fadeIn">
           <input
             className="flex-1 bg-transparent outline-none px-2"
             placeholder="Add new task"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                handleAddTask(e.currentTarget.value.trim());
-                e.currentTarget.value = "";
+              if (e.key === "Enter") {
+                handleAddTask();
               }
             }}
+            aria-label="New task title"
           />
           <button
             className="bg-pink-400 hover:bg-pink-500 transition-all duration-300 w-8 h-8 ml-2 flex items-center justify-center rounded-full shadow hover:scale-110"
-            onClick={() => {
-              const input = document.querySelector<HTMLInputElement>(".mt-6 input");
-              if (input?.value.trim()) {
-                handleAddTask(input.value.trim());
-                input.value = "";
-              }
-            }}
+            onClick={handleAddTask}
+            aria-label="Add task"
           >
             <span className="text-white text-lg">+</span>
           </button>
@@ -202,3 +243,4 @@ const CalendarPage: React.FC = () => {
 };
 
 export default CalendarPage;
+

@@ -2,7 +2,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model";
 import { Request, Response } from "express";
-import { AuthenticatedRequest } from "../middleware/authMiddleware"; // 👈 must exist
 
 const createAccessToken = (userId: string) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET || "secretkey", {
@@ -10,10 +9,10 @@ const createAccessToken = (userId: string) => {
   });
 };
 
-// 🧾 Signup
+// 🧾 SIGNUP — supports role assignment (auto admin for first user)
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
 
     if (!username || !email || !password) {
       return res.status(400).json({ msg: "Please fill all fields" });
@@ -25,10 +24,21 @@ export const signup = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, email, password: hashedPassword });
+
+    // ✅ Automatically assign "admin" role if it's the first user
+    const isFirstUser = (await User.countDocuments()) === 0;
+    const assignedRole = isFirstUser ? "admin" : role?.toLowerCase() || "user";
+
+    const newUser = new User({
+      username,
+      email,
+      password: hashedPassword,
+      role: assignedRole,
+    });
+
     await newUser.save();
 
-    const token = createAccessToken(newUser.id.toString());
+    const token = createAccessToken(newUser._id.toString());
 
     res.status(201).json({
       token,
@@ -42,40 +52,30 @@ export const signup = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Signup error:", err);
-    res.status(500).json({ msg: "Server error", err: err.message });
+    res.status(500).json({ msg: "Server error", error: err.message });
   }
 };
 
-// 🔐 Login
+// 🔐 LOGIN
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
+
+    if (!email || !password)
       return res.status(400).json({ msg: "Please fill all fields" });
-    }
 
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ msg: "User not found" });
-    }
-
-    if (!user.password) {
-      return res.status(400).json({
-        msg: "This account uses Google Sign-In. Please log in with Google.",
-      });
-    }
+    if (!user) return res.status(400).json({ msg: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password as string);
-    if (!isMatch) {
-      return res.status(400).json({ msg: "Invalid credentials" });
-    }
+    if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
-    const token = createAccessToken(user.id.toString());
+    const token = createAccessToken(user._id.toString());
 
-    res.status(200).json({
+    res.json({
       token,
       user: {
-        id: user.id,
+        id: user._id,
         username: user.username,
         email: user.email,
         role: user.role,
@@ -84,25 +84,24 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Login error:", err);
-    res.status(500).json({ msg: "Server error", err: err.message });
+    res.status(500).json({ msg: "Server error", error: err.message });
   }
 };
 
-// 👤 Get Profile
-export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
+// 👤 GET PROFILE
+export const getProfile = async (req: any, res: Response) => {
   try {
     const user = await User.findById(req.user?.id).select("-password");
     if (!user) return res.status(404).json({ msg: "User not found" });
-
     res.json(user);
   } catch (err: any) {
-    console.error("Profile fetch error:", err);
-    res.status(500).json({ msg: "Server error", err: err.message });
+    console.error("GetProfile error:", err);
+    res.status(500).json({ msg: "Server error", error: err.message });
   }
 };
 
-// ✏️ Update Profile (username, avatar, role)
-export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
+// ✏️ UPDATE PROFILE (username, avatar, role — restricted)
+export const updateProfile = async (req: any, res: Response) => {
   try {
     const { username, avatar, role } = req.body;
     const user = await User.findById(req.user?.id);
@@ -111,11 +110,13 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
 
     if (username) user.username = username;
     if (avatar) user.avatar = avatar;
-    if (role) user.role = role; // ✅ allow updating role
+
+    // 🔒 Only allow admins to change *others'* roles (not self-role)
+    if (role && user.role === "admin") user.role = role.toLowerCase();
 
     await user.save();
 
-    res.status(200).json({
+    res.json({
       msg: "Profile updated successfully",
       user: {
         id: user._id,
@@ -126,7 +127,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
       },
     });
   } catch (err: any) {
-    console.error("Profile update error:", err);
-    res.status(500).json({ msg: "Failed to update profile", err: err.message });
+    console.error("UpdateProfile error:", err);
+    res.status(500).json({ msg: "Failed to update profile", error: err.message });
   }
 };

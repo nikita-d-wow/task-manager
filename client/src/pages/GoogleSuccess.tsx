@@ -8,32 +8,31 @@ const GoogleSuccess = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token"); // ✅ matches backend redirect param
+    const handleOAuth = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = localStorage.getItem("auth_token") || urlParams.get("token");
 
-    if (token) {
-      // Save token to localStorage
-      localStorage.setItem("auth_token", token);
-
-      // Fetch the user profile via Redux
-      dispatch(fetchProfile())
-        .unwrap()
-        .then(() => {
-          navigate("/profile"); // ✅ redirect once profile is loaded
-        })
-        .catch(() => {
+      if (token) {
+        localStorage.setItem("auth_token", token);
+        try {
+          await dispatch(fetchProfile()).unwrap();
+          navigate("/profile");
+        } catch {
+          // handle fetch profile error
           navigate("/login");
-        });
-    } else {
-      navigate("/login");
-    }
+        }
+      } else {
+        // No token found, redirect to login
+        navigate("/login");
+      }
+    };
+
+    handleOAuth();
   }, [dispatch, navigate]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <h2 className="text-xl font-semibold text-gray-700">
-        Signing you in with Google...
-      </h2>
+      <h2 className="text-xl font-semibold text-gray-700">Signing you in with Google...</h2>
     </div>
   );
 };
