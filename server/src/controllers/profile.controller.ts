@@ -1,14 +1,13 @@
 import { Request, Response } from "express";
-import User from "../models/user.model"; // ✅ your Mongoose model
+import User, { User as IUser } from "../models/user.model"; // import your User interface type here
 
-// ✅ Get user profile
+// Get user profile handler
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id; // from JWT middleware
+    const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const user = await User.findById(userId).select("username email avatar role"); // ✅ FIXED comma issue
-
+    const user = await User.findById(userId).select("username email avatar role");
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json(user);
@@ -18,21 +17,27 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-// ✅ Update user profile (username, email, avatar, role)
+// Update user profile handler allowing partial update
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const { username, email, avatar, role } = req.body; // ✅ include role
+    const { username, avatar, role } = req.body;
 
-    console.log("🟢 Received update payload:", req.body); // for debugging
+    // Use Partial<IUser> for type-safe partial updates
+    const updateData: Partial<IUser> = {};
+    if (username !== undefined) updateData.username = username.trim();
+    if (avatar !== undefined) updateData.avatar = avatar;
+    if (role !== undefined) updateData.role = role;
+
+    console.log("🟢 Received update payload:", updateData);
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { username, email, avatar, role }, // ✅ include role
+      updateData,
       { new: true, runValidators: true }
-    ).select("username email avatar role"); // ✅ include role here too
+    ).select("username email avatar role");
 
     if (!updatedUser) return res.status(404).json({ message: "User not found" });
 

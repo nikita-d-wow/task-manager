@@ -15,6 +15,7 @@ export interface Task {
   progress: number;
   completed: boolean;
   deleted?: boolean;
+  isDeleted?: boolean;
   avatar: string[];
   date: string;
   time: string;

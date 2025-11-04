@@ -10,5 +10,4 @@ router.get(
     authenticateToken as RequestHandler, 
     getCalendarTasks as unknown as RequestHandler
 );
-
 export default router;

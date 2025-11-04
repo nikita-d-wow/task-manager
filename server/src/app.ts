@@ -12,6 +12,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import calendarRoutes from "./routes/calendar.routes";
 import progressRoutes from "./routes/progress.routes";
 import userRoutes from "./routes/user.routes";
+import adminRoutes from "./routes/admin.routes";
 import googleRoutes from "./routes/google.routes";
 import passport from "./config/passport";
 
@@ -31,6 +32,7 @@ app.use("/calendar", calendarRoutes);
 app.use(progressRoutes);
 app.use("/users", userRoutes);
 app.use("/google", googleRoutes);
+app.use("/admin", adminRoutes)
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 

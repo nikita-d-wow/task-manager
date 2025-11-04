@@ -1,15 +1,13 @@
-import express, { RequestHandler, Response } from "express";
-import { authenticateToken, AuthenticatedRequest } from "../middleware/authMiddleware";
+import express, { RequestHandler, Request, Response } from "express";
+import { authenticateToken } from "../middleware/authMiddleware";
 import User from "../models/user.model";
 
 const router = express.Router();
 
 // 👤 Fetch logged-in user's profile
-const getProfile: RequestHandler = async (req, res) => {
-  const typedReq = req as AuthenticatedRequest;
-
+const getProfile: RequestHandler = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(typedReq.user?.id).select("-password");
+    const user = await User.findById(req.user?.id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json(user);
@@ -19,8 +17,8 @@ const getProfile: RequestHandler = async (req, res) => {
   }
 };
 
-// ✅ Cast auth middleware to RequestHandler to satisfy Express types
-router.get("/profile", authenticateToken as RequestHandler, getProfile);
+// ✅ Protected route
+router.get("/profile", authenticateToken, getProfile);
 
 // 👥 Fetch all users
 router.get("/", async (_req, res: Response) => {

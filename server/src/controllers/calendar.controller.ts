@@ -1,30 +1,39 @@
-import { Response } from "express";
+import { RequestHandler } from "express";
 import { Task } from "../models/task.model";
-import { AuthenticatedRequest } from "../middleware/authMiddleware";
 
-// ✅ Fetch tasks for the calendar for the logged-in user
-export const getCalendarTasks = async (req: AuthenticatedRequest, res: Response) => {
+export const getCalendarTasks: RequestHandler = async (req, res) => {
   try {
     const userId = req.user?.id;
+    const role = req.user?.role;
+
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const { date } = req.query;
+    const query: any = {};
 
-    // ✅ Build query to filter by logged-in user
-    const query: any = {
-      $or: [{ createdBy: userId }, { assignedTo: userId }],
-    };
-
-    // ✅ Filter by specific date (if provided)
-    if (date) {
-      query.date = date;
+    if (role === "admin") {
+      if (date) {
+        const start = new Date(date as string);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date as string);
+        end.setHours(23, 59, 59, 999);
+        query.date = { $gte: start, $lte: end };
+      }
+    } else {
+      query.$or = [{ createdBy: userId }, { assignedTo: userId }];
+      if (date) {
+        const start = new Date(date as string);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date as string);
+        end.setHours(23, 59, 59, 999);
+        query.date = { $gte: start, $lte: end };
+      }
     }
 
-    // ✅ Fetch and sort
     const tasks = await Task.find(query)
-      .populate("createdBy", "username avatar")
-      .populate("assignedTo", "username avatar")
-      .sort({ date: 1 });
+      .populate("createdBy", "username avatar role")
+      .populate("assignedTo", "username avatar role")
+      .sort({ date: 1, createdAt: -1 });
 
     res.json({ tasks });
   } catch (error) {
@@ -32,4 +41,3 @@ export const getCalendarTasks = async (req: AuthenticatedRequest, res: Response)
     res.status(500).json({ message: "Failed to fetch tasks for calendar" });
   }
 };
-

@@ -167,10 +167,18 @@ const ProfilePage: React.FC = () => {
 
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate("/tasks")}
+            onClick={() => navigate("/")}
             className="w-full py-2 rounded bg-green-100 text-green-800 hover:bg-green-200 transition font-medium"
           >
             View Tasks
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => navigate("/tasks")}
+            className="w-full py-2 rounded bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition font-medium"
+          >
+            Add Task
           </motion.button>
 
           <motion.button
@@ -202,6 +210,7 @@ const ProfilePage: React.FC = () => {
           </motion.button>
         </div>
 
+        {/* Message */}
         {message && (
           <p
             className={`text-sm mt-4 ${

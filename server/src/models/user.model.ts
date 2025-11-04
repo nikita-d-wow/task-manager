@@ -2,6 +2,8 @@ import mongoose, { Schema, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 
 export interface User extends Document {
+  _id: mongoose.Types.ObjectId;
+  id?: string;  
   username: string;
   email: string;
   password?: string; // optional for Google users
@@ -46,10 +48,12 @@ const userSchema = new Schema<User>(
       type: String,
       required: false,
     },
-    role: { 
-      type: String,
-      default: "User"
-    },
+    role: {
+  type: String,
+  // enum: ["user", "admin"],
+  default: "",
+},
+
   },
   { timestamps: true }
 );
